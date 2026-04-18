@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quickcart-deployment
+  labels:
+    app: quickcart
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: quickcart
+  template:
+    metadata:
+      labels:
+        app: quickcart
+    spec:
+      containers:
+      - name: quickcart-app
+        image: your_dockerhub_username/quickcart-app:latest # Placeholder
+        ports:
+        - containerPort: 8501
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "250m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"

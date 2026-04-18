@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: quickcart-service
+spec:
+  type: LoadBalancer # Or NodePort for local dev like minikube
+  selector:
+    app: quickcart
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8501
