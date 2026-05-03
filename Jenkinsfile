@@ -1,75 +1,92 @@
 pipeline {
-    agent any
+    agent {
+        // Real-world: Running pipeline steps inside an isolated Docker container
+        // Requires Docker Pipeline plugin
+        docker { 
+            image 'python:3.10-slim'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
 
     environment {
         DOCKER_IMAGE = 'devops-quickcart'
         DOCKER_TAG = "v${env.BUILD_ID}"
+        DOCKER_HUB_USER = 'hetshahrock'
+        DOCKER_CREDENTIALS_ID = 'dockerhub-creds'
     }
 
     stages {
         stage('Checkout & Setup') {
             steps {
                 checkout scm
-                echo "Code fetched from repository."
             }
         }
-        
-        // FEATURE 1: PARALLEL EXECUTION
-        stage('Automated Checks') {
+
+        stage('Parallel Code Checks') {
             parallel {
-                stage('Code Quality (Linting)') {
+                stage('Linting (Flake8)') {
                     steps {
-                        echo "Running flake8 to check code quality..."
-                        // sh "pip install flake8 && flake8 app.py"
-                        echo "[Mock] Linting passed successfully."
+                        sh 'pip install flake8'
+                        sh 'flake8 app.py database.py seed.py || true'
                     }
                 }
-                stage('Security Scan (SAST)') {
+                stage('Security Scan (Bandit)') {
                     steps {
-                        echo "Running bandit security scanner..."
-                        // sh "pip install bandit && bandit -r app.py"
-                        echo "[Mock] No security vulnerabilities found."
-                    }
-                }
-                stage('Unit Testing') {
-                    steps {
-                        echo "Running pytest..."
-                        echo "[Mock] All 24 tests passed."
+                        sh 'pip install bandit'
+                        sh 'bandit -r app.py database.py seed.py || true'
                     }
                 }
             }
         }
 
-        stage('Multi-stage Docker Build') {
+        stage('Build Docker Image') {
             steps {
-                echo "Building Highly Optimized Docker Image..."
-                // sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
-                echo "[Mock] Successfully built ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                echo "Building Docker image: ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                // Real docker build execution
+                sh "docker build -t ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:${DOCKER_TAG} ."
+                sh "docker tag ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:latest"
             }
         }
 
-        stage('Kubernetes Deployment') {
+        stage('Push Docker Image') {
             steps {
-                echo "Applying ConfigMaps, Secrets, Deployment and Services..."
-                // sh 'kubectl apply -f k8s/configmap.yaml'
-                // sh 'kubectl apply -f k8s/deployment.yaml'
-                // sh 'kubectl apply -f k8s/ingress.yaml'
-                echo "[Mock] Deployed seamlessly to K8s cluster."
+                echo "Authenticating and pushing image to Docker Hub"
+                // Requires Jenkins credentials setup
+                /*
+                withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDENTIALS_ID, passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
+                    sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin"
+                    sh "docker push ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    sh "docker push ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:latest"
+                }
+                */
+                echo "[Mock] Pushed successfully for local dev."
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                echo "Applying K8s manifests..."
+                /* Real K8s apply using kubectl (assuming kubeconfig is mounted or set)
+                sh 'kubectl apply -f k8s/pv-pvc.yaml'
+                sh 'kubectl apply -f k8s/secret.yaml'
+                sh 'kubectl apply -f k8s/configmap.yaml'
+                sh 'kubectl apply -f k8s/deployment.yaml'
+                sh 'kubectl apply -f k8s/service.yaml'
+                
+                sh "kubectl set image deployment/quickcart-deployment quickcart-app=${DOCKER_HUB_USER}/${DOCKER_IMAGE}:${DOCKER_TAG}"
+                sh "kubectl rollout status deployment/quickcart-deployment"
+                */
+                echo "[Mock] Kubernetes resources updated!"
             }
         }
     }
-    
-    // FEATURE 2: POST BUILD ACTIONS
+
     post {
-        always {
-            echo "Archiving artifacts and generating test reports..."
-            // junit 'test-reports/*.xml'
-        }
         success {
-            echo "✅ Sending Slack Notification: Build Succeeded!"
+            echo "✅ Pipeline Finished Successfully!"
         }
         failure {
-            echo "❌ Sending Slack Notification: Build Failed. Initiating Rollback."
+            echo "❌ Pipeline Failed!"
         }
     }
 }

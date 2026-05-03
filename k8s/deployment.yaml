@@ -16,13 +16,32 @@ spec:
     spec:
       containers:
       - name: quickcart-app
-        image: your_dockerhub_username/quickcart-app:latest # Placeholder
+        image: devops-quickcart:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8501
+        envFrom:
+        - configMapRef:
+            name: quickcart-config
+        - secretRef:
+            name: quickcart-secret
+        volumeMounts:
+        - name: db-volume
+          mountPath: /data
         resources:
           requests:
-            memory: "128Mi"
+            memory: "256Mi"
             cpu: "250m"
           limits:
-            memory: "256Mi"
+            memory: "512Mi"
             cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /_stcore/health
+            port: 8501
+          initialDelaySeconds: 15
+          periodSeconds: 20
+      volumes:
+      - name: db-volume
+        persistentVolumeClaim:
+          claimName: quickcart-db-pvc
