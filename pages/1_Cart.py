@@ -129,5 +129,6 @@ if st.button("🚀 Place Order", type="primary", use_container_width=True):
         st.session_state.coupon_pct = 0
         st.switch_page("pages/2_Order_Confirmation.py")
 
-st.button("← Continue Shopping", on_click=lambda: st.switch_page("app.py"))
+if st.button("← Continue Shopping"):
+    st.switch_page("app.py")
 conn.close()
