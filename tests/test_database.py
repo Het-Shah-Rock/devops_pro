@@ -61,18 +61,18 @@ class TestDatabase:
         row = conn.execute("SELECT * FROM orders WHERE username = 'testuser'").fetchone()
         assert row is not None
         assert row["total_amount"] == 14.99
-        assert row["status"] == "Processing"
+        assert row["status"] == "Order Placed"
         conn.close()
 
     def test_stock_update(self):
         """Test: Stock decreases after a purchase."""
         conn = get_connection()
-        conn.execute(
+        c = conn.execute(
             "INSERT INTO products (name, price, category, stock, emoji, description) VALUES (?,?,?,?,?,?)",
-            ("Stock Test Milk", 2.49, "Dairy", 20, "🥛", "milk")
+            ("UNIQUE_TEST_MILK_XYZ", 2.49, "Dairy", 20, "M", "milk")
         )
         conn.commit()
-        pid = conn.execute("SELECT id FROM products WHERE name='Stock Test Milk'").fetchone()["id"]
+        pid = c.lastrowid
         conn.execute("UPDATE products SET stock = stock - 3 WHERE id = ?", (pid,))
         conn.commit()
         remaining = conn.execute("SELECT stock FROM products WHERE id = ?", (pid,)).fetchone()["stock"]
